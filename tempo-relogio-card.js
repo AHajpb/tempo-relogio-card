@@ -385,11 +385,19 @@ class TempoRelogioCard extends HTMLElement {
           0%, 100% { transform: scale(1); opacity: 0.55; }
           50% { transform: scale(1.12); opacity: 0.9; }
         }
+        .illustration.sunny .icon-halo {
+          background: radial-gradient(circle, rgba(253,224,71,0.75), rgba(251,191,36,0.25) 55%, transparent 75%);
+          animation: halo-pulse-sun 2.4s ease-in-out infinite;
+        }
+        @keyframes halo-pulse-sun {
+          0%, 100% { transform: scale(1); opacity: 0.65; }
+          50% { transform: scale(1.22); opacity: 1; }
+        }
         .weather-icon {
           --mdc-icon-size: 64px;
           position: relative;
           color: #fff;
-          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
         }
         .weather-icon.spin { animation: spin 50s linear infinite; }
         .weather-icon.twinkle { animation: twinkle 3.5s ease-in-out infinite; }
@@ -604,8 +612,10 @@ class TempoRelogioCard extends HTMLElement {
     const iconName = CONDITION_ICONS[condition] || (isNight ? 'mdi:weather-night' : 'mdi:weather-cloudy');
     const iconEl = root.querySelector('.weather-icon');
     iconEl.setAttribute('icon', iconName);
+    iconEl.style.color = CONDITION_ICON_COLORS[condition] || '#fff';
     iconEl.classList.toggle('spin', condition === 'sunny');
     iconEl.classList.toggle('twinkle', condition === 'clear-night');
+    root.querySelector('.illustration').classList.toggle('sunny', condition === 'sunny');
     const gradient = CONDITION_GRADIENTS[condition] || DEFAULT_GRADIENT;
     bg.style.background = `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`;
     bg.classList.toggle('dim-night', isNight && !String(condition).includes('night'));
