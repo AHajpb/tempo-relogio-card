@@ -20,6 +20,10 @@
  *   show_seconds: true            # default true (relógio ao vivo, ao segundo)
  *   forecast_days: 5              # default 5, 0 esconde a previsão diária
  *   forecast_hours: 12            # default 12, quantas horas mostrar no separador horário
+ *   alert_entity: sensor.ipma_avisos   # opcional — entidade de avisos meteorológicos
+ *                                        # (ex: o sensor de avisos do IPMA, ou um
+ *                                        # binary_sensor do MeteoAlarm). Se omitido,
+ *                                        # a faixa de aviso não aparece.
  */
 
 const CONDITION_ICONS = {
@@ -109,6 +113,30 @@ const CONDITION_FX = {
 
 function capitalize(str) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+}
+
+const WIND_DIRS_PT = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+function windDirectionLabel(deg) {
+  if (deg === undefined || deg === null || isNaN(deg)) return null;
+  const idx = Math.round(((deg % 360) + 360) % 360 / 45) % 8;
+  return WIND_DIRS_PT[idx];
+}
+
+// Lê o estado de uma entidade de avisos meteorológicos (sensor do IPMA,
+// binary_sensor do MeteoAlarm, etc.) de forma flexível, sem depender de
+// um esquema de atributos único.
+const ALERT_INACTIVE_STATES = ['off', 'unavailable', 'unknown', 'none', 'no_warning', 'green', ''];
+function extractAlertInfo(stateObj) {
+  if (!stateObj) return null;
+  const state = String(stateObj.state || '').toLowerCase();
+  if (ALERT_INACTIVE_STATES.includes(state)) return null;
+  const attrs = stateObj.attributes || {};
+  const title = attrs.headline || attrs.event || attrs.title
+    || (stateObj.state && stateObj.state.length > 2 ? stateObj.state : null)
+    || attrs.friendly_name || 'Aviso meteorológico';
+  const description = attrs.description || attrs.area || null;
+  const level = String(attrs.awareness_level || attrs.severity || attrs.level || '').toLowerCase();
+  return { title, description, level };
 }
 
 class TempoRelogioCard extends HTMLElement {
@@ -276,30 +304,20 @@ class TempoRelogioCard extends HTMLElement {
         .fx-layer.fx-stars {
           background-image:
             radial-gradient(circle, rgba(255,255,255,0.95) 1.3px, transparent 1.5px),
-            radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1.2px),
-            radial-gradient(circle, rgba(255,255,255,0.6) 0.8px, transparent 1px),
-            radial-gradient(circle, rgba(255,255,255,0.9) 1.1px, transparent 1.3px);
-          background-size: 70px 70px, 95px 95px, 55px 55px, 120px 120px;
-          background-position: 8px 12px, 45px 60px, 20px 85px, 90px 20px;
+            radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1.2px);
+          background-size: 110px 110px, 150px 150px;
+          background-position: 10px 15px, 70px 80px;
         }
-        .fx-layer.fx-stars::before,
-        .fx-layer.fx-stars::after {
+        .fx-layer.fx-stars::before {
           content: '';
           position: absolute;
           inset: 0;
           background-image:
-            radial-gradient(circle, rgba(255,255,255,0.85) 1px, transparent 1.2px),
-            radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1.2px);
-        }
-        .fx-layer.fx-stars::before {
-          background-size: 80px 80px, 110px 110px;
-          background-position: 30px 40px, 65px 95px;
-          animation: fx-star-twinkle 2.6s ease-in-out infinite;
-        }
-        .fx-layer.fx-stars::after {
-          background-size: 100px 100px, 65px 65px;
-          background-position: 15px 70px, 75px 10px;
-          animation: fx-star-twinkle 4s ease-in-out infinite 1.2s;
+            radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1.2px),
+            radial-gradient(circle, rgba(255,255,255,0.55) 1px, transparent 1.2px);
+          background-size: 130px 130px, 170px 170px;
+          background-position: 35px 45px, 90px 100px;
+          animation: fx-star-twinkle 2.8s ease-in-out infinite;
         }
         @keyframes fx-star-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
         .fx-layer.fx-clouds::before,
@@ -343,6 +361,22 @@ class TempoRelogioCard extends HTMLElement {
           padding: 16px 20px;
           color: rgba(255,255,255,0.95);
         }
+        .alert-banner {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          background: rgba(0,0,0,0.28);
+          border-left: 4px solid #eab308;
+          border-radius: 8px;
+          padding: 8px 10px;
+          margin-bottom: 12px;
+        }
+        .alert-banner.level-orange { border-left-color: #f97316; }
+        .alert-banner.level-red { border-left-color: #ef4444; }
+        .alert-icon { --mdc-icon-size: 18px; color: #fff; flex: none; margin-top: 1px; }
+        .alert-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .alert-title { font-size: 12.5px; font-weight: 700; color: #fff; }
+        .alert-desc { font-size: 11.5px; color: rgba(255,255,255,0.85); line-height: 1.35; }
         .eyebrow {
           font-size: 12px;
           font-weight: 600;
@@ -469,6 +503,7 @@ class TempoRelogioCard extends HTMLElement {
           padding: 6px 12px;
         }
         .stat ha-icon { --mdc-icon-size: 16px; color: rgba(255,255,255,0.9); }
+        .wind-dir-icon { display: inline-block; transition: transform 0.4s ease; }
         .forecast-tabs {
           display: flex;
           gap: 20px;
@@ -514,7 +549,18 @@ class TempoRelogioCard extends HTMLElement {
           margin-bottom: 2px;
         }
         .icon-stack { position: relative; display: inline-flex; align-items: center; justify-content: center; }
-        .forecast-icon { --mdc-icon-size: 38px; color: #e2e8f0; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.35)); }
+        .forecast-icon { --mdc-icon-size: 38px; color: #e2e8f0; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.35)); position: relative; z-index: 1; }
+        .mini-sun {
+          position: absolute;
+          top: -2px;
+          left: -1px;
+          width: 15px;
+          height: 15px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 35% 30%, #fffde7, #fbbf24 60%, #f59e0b 100%);
+          box-shadow: 0 0 6px 1px rgba(251,191,36,0.65);
+          z-index: 0;
+        }
         .forecast-icon-night {
           --mdc-icon-size: 14px;
           color: #1e293b;
@@ -535,6 +581,13 @@ class TempoRelogioCard extends HTMLElement {
         <div class="card-bg"></div>
         <div class="fx-layer"></div>
         <div class="card-inner">
+          <div class="alert-banner" style="display:none;">
+            <ha-icon class="alert-icon" icon="mdi:alert"></ha-icon>
+            <div class="alert-text">
+              <span class="alert-title"></span>
+              <span class="alert-desc"></span>
+            </div>
+          </div>
           <div class="eyebrow"><span class="dot"></span><span class="status-text">—</span></div>
           <div class="main-row">
             <div class="illustration">
@@ -577,6 +630,8 @@ class TempoRelogioCard extends HTMLElement {
           <div class="stats-row">
             <div class="stat"><ha-icon icon="mdi:water-percent"></ha-icon><span class="humidity-val">—</span></div>
             <div class="stat"><ha-icon icon="mdi:weather-windy"></ha-icon><span class="wind-val">—</span></div>
+            <div class="stat stat-uv"><ha-icon icon="mdi:weather-sunny-alert"></ha-icon><span class="uv-val">—</span></div>
+            <div class="stat stat-wind-dir"><ha-icon class="wind-dir-icon" icon="mdi:navigation"></ha-icon><span class="wind-dir-val">—</span></div>
           </div>
           <div class="forecast-section">
             <div class="divider"></div>
@@ -674,7 +729,49 @@ class TempoRelogioCard extends HTMLElement {
     const wind = stateObj.attributes.wind_speed;
     const windUnit = stateObj.attributes.wind_speed_unit || 'km/h';
     root.querySelector('.wind-val').textContent = (wind !== undefined && wind !== null) ? `${Math.round(wind)} ${windUnit}` : '—';
+    const uv = stateObj.attributes.uv_index;
+    const uvStat = root.querySelector('.stat-uv');
+    if (uv !== undefined && uv !== null) {
+      root.querySelector('.uv-val').textContent = `UV ${Math.round(uv * 10) / 10}`;
+      uvStat.style.display = '';
+    } else {
+      uvStat.style.display = 'none';
+    }
+    const bearing = stateObj.attributes.wind_bearing;
+    const windDirStat = root.querySelector('.stat-wind-dir');
+    const dirLabel = windDirectionLabel(bearing);
+    if (dirLabel) {
+      root.querySelector('.wind-dir-val').textContent = dirLabel;
+      root.querySelector('.wind-dir-icon').style.transform = `rotate(${bearing}deg)`;
+      windDirStat.style.display = '';
+    } else {
+      windDirStat.style.display = 'none';
+    }
     this._renderForecastRow();
+    this._renderAlert();
+  }
+  _renderAlert() {
+    const root = this.shadowRoot;
+    const banner = root.querySelector('.alert-banner');
+    if (!banner || !this._config) return;
+    const entityId = this._config.alert_entity;
+    const stateObj = entityId && this._hass ? this._hass.states[entityId] : null;
+    const info = extractAlertInfo(stateObj);
+    if (!info) {
+      banner.style.display = 'none';
+      return;
+    }
+    banner.style.display = 'flex';
+    banner.className = 'alert-banner';
+    if (/red|vermelho|high|severe|extreme|4/.test(info.level)) {
+      banner.classList.add('level-red');
+    } else if (/orange|laranja|3/.test(info.level)) {
+      banner.classList.add('level-orange');
+    }
+    root.querySelector('.alert-title').textContent = info.title;
+    const descEl = root.querySelector('.alert-desc');
+    descEl.textContent = info.description || '';
+    descEl.style.display = info.description ? '' : 'none';
   }
   _buildDailyPairs(list) {
     const days = [];
@@ -712,6 +809,7 @@ class TempoRelogioCard extends HTMLElement {
       <div class="forecast-day">
         <span class="forecast-day-label">${label}</span>
         <div class="icon-stack">
+          ${dayEntry && dayEntry.condition === 'partlycloudy' ? '<span class="mini-sun"></span>' : ''}
           <ha-icon icon="${dayIcon}" class="forecast-icon" style="color: ${dayIconColor};"></ha-icon>
           ${nightIcon ? `<ha-icon icon="${nightIcon}" class="forecast-icon-night"></ha-icon>` : ''}
         </div>
@@ -728,7 +826,10 @@ class TempoRelogioCard extends HTMLElement {
     return `
       <div class="forecast-day">
         <span class="forecast-day-label">${label}</span>
-        <ha-icon icon="${icon}" class="forecast-icon" style="color: ${iconColor};"></ha-icon>
+        <div class="icon-stack">
+          ${entry.condition === 'partlycloudy' ? '<span class="mini-sun"></span>' : ''}
+          <ha-icon icon="${icon}" class="forecast-icon" style="color: ${iconColor};"></ha-icon>
+        </div>
         <span class="forecast-max">${temp !== null ? temp + '°' : '—'}</span>
       </div>`;
   }
