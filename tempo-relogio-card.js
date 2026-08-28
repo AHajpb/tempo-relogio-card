@@ -132,16 +132,26 @@ function windDirectionLabel(deg) {
 // binary_sensor do MeteoAlarm, etc.) de forma flexível, sem depender de
 // um esquema de atributos único.
 const ALERT_INACTIVE_STATES = ['off', 'unavailable', 'unknown', 'none', 'no_warning', 'green', ''];
+const ALERT_COLOR_LABELS_PT = { yellow: 'Amarelo', orange: 'Laranja', red: 'Vermelho' };
 function extractAlertInfo(stateObj) {
   if (!stateObj) return null;
   const state = String(stateObj.state || '').toLowerCase();
   if (ALERT_INACTIVE_STATES.includes(state)) return null;
   const attrs = stateObj.attributes || {};
-  const title = attrs.headline || attrs.event || attrs.title
-    || (stateObj.state && stateObj.state.length > 2 ? stateObj.state : null)
-    || attrs.friendly_name || 'Aviso meteorológico';
-  const description = attrs.description || attrs.area || null;
-  const level = String(attrs.awareness_level || attrs.severity || attrs.level || '').toLowerCase();
+  // Alguns sensores (ex: nível de aviso do IPMA) só têm um estado tipo
+  // "yellow"/"orange"/"red", sem headline/event/title — nesse caso mostramos
+  // um título genérico e o nível traduzido, em vez do estado em bruto.
+  const isBareColorState = ALERT_COLOR_LABELS_PT.hasOwnProperty(state)
+    && !attrs.headline && !attrs.event && !attrs.title;
+  const title = isBareColorState
+    ? 'Alerta IPMA'
+    : (attrs.headline || attrs.event || attrs.title
+      || (stateObj.state && stateObj.state.length > 2 ? stateObj.state : null)
+      || attrs.friendly_name || 'Aviso meteorológico');
+  const description = isBareColorState
+    ? `Nível ${ALERT_COLOR_LABELS_PT[state]}`
+    : (attrs.description || attrs.area || null);
+  const level = String(attrs.awareness_level || attrs.severity || attrs.level || (isBareColorState ? state : '')).toLowerCase();
   return { title, description, level };
 }
 
@@ -372,11 +382,12 @@ class TempoRelogioCard extends HTMLElement {
           align-items: flex-start;
           gap: 8px;
           background: rgba(0,0,0,0.28);
-          border-left: 4px solid #eab308;
+          border-left: 8px solid #eab308;
           border-radius: 8px;
           padding: 8px 10px;
           margin-bottom: 12px;
         }
+        .alert-banner.level-yellow { border-left-color: #eab308; }
         .alert-banner.level-orange { border-left-color: #f97316; }
         .alert-banner.level-red { border-left-color: #ef4444; }
         .alert-icon { --mdc-icon-size: 18px; color: #fff; flex: none; margin-top: 1px; }
@@ -785,6 +796,8 @@ class TempoRelogioCard extends HTMLElement {
       banner.classList.add('level-red');
     } else if (/orange|laranja|3/.test(info.level)) {
       banner.classList.add('level-orange');
+    } else if (/yellow|amarelo|moderate|2/.test(info.level)) {
+      banner.classList.add('level-yellow');
     }
     root.querySelector('.alert-title').textContent = info.title;
     const descEl = root.querySelector('.alert-desc');
