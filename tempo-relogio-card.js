@@ -103,6 +103,25 @@ const CONDITION_ICON_COLORS = {
 };
 const DEFAULT_ICON_COLOR = '#e2e8f0';
 
+// Que efeito animado de fundo mostrar consoante a condição.
+const CONDITION_FX = {
+  'rainy': 'fx-rain',
+  'pouring': 'fx-rain',
+  'lightning-rainy': 'fx-rain fx-lightning',
+  'lightning': 'fx-lightning',
+  'snowy': 'fx-snow',
+  'snowy-rainy': 'fx-snow',
+  'hail': 'fx-snow',
+  'cloudy': 'fx-clouds',
+  'partlycloudy': 'fx-clouds',
+  'partlycloudy-night': 'fx-clouds',
+  'fog': 'fx-clouds',
+  'windy': 'fx-clouds',
+  'windy-variant': 'fx-clouds',
+  'clear-night': 'fx-stars',
+  'exceptional': 'fx-lightning',
+};
+
 function capitalize(str) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
 }
@@ -242,9 +261,81 @@ class TempoRelogioCard extends HTMLElement {
           transition: background 0.6s ease, filter 0.6s ease;
         }
         .card-bg.dim-night { filter: brightness(0.6) saturate(0.9); }
+        .fx-layer {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          overflow: hidden;
+          pointer-events: none;
+        }
+        .fx-layer.fx-rain {
+          background-image: repeating-linear-gradient(100deg, rgba(255,255,255,0.4) 0 2px, transparent 2px 14px);
+          animation: fx-rain-move 0.4s linear infinite;
+        }
+        @keyframes fx-rain-move {
+          from { background-position: 0 0; }
+          to { background-position: 0 20px; }
+        }
+        .fx-layer.fx-snow {
+          background-image:
+            radial-gradient(circle, rgba(255,255,255,0.9) 1.5px, transparent 1.6px),
+            radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1.1px),
+            radial-gradient(circle, rgba(255,255,255,0.6) 1.2px, transparent 1.3px);
+          background-size: 60px 60px, 80px 80px, 100px 100px;
+          background-position: 0 0, 20px 10px, 40px 30px;
+          animation: fx-snow-fall 6s linear infinite;
+        }
+        @keyframes fx-snow-fall {
+          from { background-position: 0 0, 20px 10px, 40px 30px; }
+          to { background-position: 0 60px, 20px 90px, 40px 130px; }
+        }
+        .fx-layer.fx-stars {
+          background-image:
+            radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1.2px),
+            radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1.2px);
+          background-size: 90px 90px, 130px 130px;
+          background-position: 10px 15px, 60px 70px;
+          animation: fx-star-twinkle 3s ease-in-out infinite;
+        }
+        @keyframes fx-star-twinkle { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .fx-layer.fx-clouds::before,
+        .fx-layer.fx-clouds::after {
+          content: '';
+          position: absolute;
+          width: 140px; height: 50px;
+          background: radial-gradient(ellipse, rgba(255,255,255,0.25), transparent 70%);
+          border-radius: 50%;
+          filter: blur(6px);
+        }
+        .fx-layer.fx-clouds::before { top: 12%; left: -25%; animation: fx-drift 18s linear infinite; }
+        .fx-layer.fx-clouds::after { top: 48%; left: -45%; animation: fx-drift 26s linear infinite reverse; }
+        @keyframes fx-drift {
+          from { transform: translateX(0); }
+          to { transform: translateX(320%); }
+        }
+        .fx-layer.fx-lightning::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: rgba(255,255,255,0.9);
+          opacity: 0;
+          animation: fx-lightning-flash 5s infinite;
+        }
+        @keyframes fx-lightning-flash {
+          0%, 92%, 96%, 100% { opacity: 0; }
+          93% { opacity: 0.75; }
+          94% { opacity: 0.1; }
+          95% { opacity: 0.55; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fx-layer, .fx-layer::before, .fx-layer::after,
+          .weather-icon.spin, .weather-icon.twinkle, .icon-halo {
+            animation: none !important;
+          }
+        }
         .card-inner {
           position: relative;
-          z-index: 1;
+          z-index: 2;
           padding: 16px 20px;
           color: rgba(255,255,255,0.95);
         }
@@ -423,6 +514,7 @@ class TempoRelogioCard extends HTMLElement {
       </style>
       <ha-card>
         <div class="card-bg"></div>
+        <div class="fx-layer"></div>
         <div class="card-inner">
           <div class="eyebrow"><span class="dot"></span><span class="status-text">—</span></div>
           <div class="main-row">
@@ -517,6 +609,11 @@ class TempoRelogioCard extends HTMLElement {
     const gradient = CONDITION_GRADIENTS[condition] || DEFAULT_GRADIENT;
     bg.style.background = `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`;
     bg.classList.toggle('dim-night', isNight && !String(condition).includes('night'));
+    const fxLayer = root.querySelector('.fx-layer');
+    if (fxLayer) {
+      const fxClass = CONDITION_FX[condition] || (isNight ? 'fx-stars' : '');
+      fxLayer.className = `fx-layer ${fxClass}`;
+    }
     root.querySelector('.status-text').textContent = this._config.name || stateObj.attributes.friendly_name || 'Tempo';
     root.querySelector('.condition-label').textContent = CONDITION_LABELS_PT[condition] || condition;
     const temp = stateObj.attributes.temperature;
