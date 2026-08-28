@@ -24,6 +24,12 @@
  *                                        # (ex: o sensor de avisos do IPMA, ou um
  *                                        # binary_sensor do MeteoAlarm). Se omitido,
  *                                        # a faixa de aviso não aparece.
+ *   uv_entity: sensor.casa_indice_uv        # opcional — usa esta entidade para o
+ *                                            # índice UV quando a entidade weather.*
+ *                                            # não traz o atributo uv_index (comum
+ *                                            # em algumas integrações, ex: IPMA).
+ *   wind_bearing_entity: sensor.casa_vento  # opcional — idem, para a direção do
+ *                                            # vento quando falta wind_bearing.
  */
 
 const CONDITION_ICONS = {
@@ -729,15 +735,27 @@ class TempoRelogioCard extends HTMLElement {
     const wind = stateObj.attributes.wind_speed;
     const windUnit = stateObj.attributes.wind_speed_unit || 'km/h';
     root.querySelector('.wind-val').textContent = (wind !== undefined && wind !== null) ? `${Math.round(wind)} ${windUnit}` : '—';
-    const uv = stateObj.attributes.uv_index;
+    let uv = stateObj.attributes.uv_index;
+    if ((uv === undefined || uv === null) && this._config.uv_entity && this._hass) {
+      const uvEntity = this._hass.states[this._config.uv_entity];
+      if (uvEntity && uvEntity.state !== undefined && !isNaN(parseFloat(uvEntity.state))) {
+        uv = parseFloat(uvEntity.state);
+      }
+    }
     const uvStat = root.querySelector('.stat-uv');
-    if (uv !== undefined && uv !== null) {
+    if (uv !== undefined && uv !== null && !isNaN(uv)) {
       root.querySelector('.uv-val').textContent = `UV ${Math.round(uv * 10) / 10}`;
       uvStat.style.display = '';
     } else {
       uvStat.style.display = 'none';
     }
-    const bearing = stateObj.attributes.wind_bearing;
+    let bearing = stateObj.attributes.wind_bearing;
+    if ((bearing === undefined || bearing === null) && this._config.wind_bearing_entity && this._hass) {
+      const bearingEntity = this._hass.states[this._config.wind_bearing_entity];
+      if (bearingEntity && bearingEntity.state !== undefined && !isNaN(parseFloat(bearingEntity.state))) {
+        bearing = parseFloat(bearingEntity.state);
+      }
+    }
     const windDirStat = root.querySelector('.stat-wind-dir');
     const dirLabel = windDirectionLabel(bearing);
     if (dirLabel) {
