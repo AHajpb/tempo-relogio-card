@@ -60,26 +60,11 @@ const CONDITION_LABELS_PT = {
   'windy-variant': 'Vento e nuvens',
 };
 
-// Gradientes vivos por condição — dão a identidade colorida ao card.
-const CONDITION_GRADIENTS = {
-  'sunny': ['#fbbf24', '#f97316'],
-  'clear-night': ['#4c1d95', '#1e1b4b'],
-  'partlycloudy': ['#38bdf8', '#6366f1'],
-  'partlycloudy-night': ['#4338ca', '#1e1b4b'],
-  'cloudy': ['#64748b', '#334155'],
-  'fog': ['#94a3b8', '#475569'],
-  'rainy': ['#38bdf8', '#1d4ed8'],
-  'pouring': ['#1d4ed8', '#0f172a'],
-  'lightning': ['#7c3aed', '#1e1b4b'],
-  'lightning-rainy': ['#4c1d95', '#0f172a'],
-  'snowy': ['#bae6fd', '#60a5fa'],
-  'snowy-rainy': ['#93c5fd', '#3b82f6'],
-  'hail': ['#a5f3fc', '#0ea5e9'],
-  'windy': ['#5eead4', '#0d9488'],
-  'windy-variant': ['#5eead4', '#0f766e'],
-  'exceptional': ['#f43f5e', '#7f1d1d'],
-};
-const DEFAULT_GRADIENT = ['#64748b', '#334155'];
+// Fundo simples: azul-claro de dia, céu escuro estrelado de noite.
+// A condição em si continua a distinguir-se pela cor do ícone e pela
+// animação (chuva, neve, nuvens, relâmpagos…).
+const DAY_GRADIENT = ['#3b82f6', '#1e3a8a'];
+const NIGHT_GRADIENT = ['#0f172a', '#020617'];
 
 // Cores por condição para os ícones da previsão (nuvens cinza/brancas,
 // chuva azul, sol amarelo…), tal como no card nativo de previsão.
@@ -257,10 +242,9 @@ class TempoRelogioCard extends HTMLElement {
           position: absolute;
           inset: 0;
           z-index: 0;
-          background: linear-gradient(135deg, ${DEFAULT_GRADIENT[0]}, ${DEFAULT_GRADIENT[1]});
+          background: linear-gradient(135deg, ${DAY_GRADIENT[0]}, ${DAY_GRADIENT[1]});
           transition: background 0.6s ease, filter 0.6s ease;
         }
-        .card-bg.dim-night { filter: brightness(0.6) saturate(0.9); }
         .fx-layer {
           position: absolute;
           inset: 0;
@@ -291,13 +275,33 @@ class TempoRelogioCard extends HTMLElement {
         }
         .fx-layer.fx-stars {
           background-image:
-            radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1.2px),
-            radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1.2px);
-          background-size: 90px 90px, 130px 130px;
-          background-position: 10px 15px, 60px 70px;
-          animation: fx-star-twinkle 3s ease-in-out infinite;
+            radial-gradient(circle, rgba(255,255,255,0.95) 1.3px, transparent 1.5px),
+            radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1.2px),
+            radial-gradient(circle, rgba(255,255,255,0.6) 0.8px, transparent 1px),
+            radial-gradient(circle, rgba(255,255,255,0.9) 1.1px, transparent 1.3px);
+          background-size: 70px 70px, 95px 95px, 55px 55px, 120px 120px;
+          background-position: 8px 12px, 45px 60px, 20px 85px, 90px 20px;
         }
-        @keyframes fx-star-twinkle { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .fx-layer.fx-stars::before,
+        .fx-layer.fx-stars::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image:
+            radial-gradient(circle, rgba(255,255,255,0.85) 1px, transparent 1.2px),
+            radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1.2px);
+        }
+        .fx-layer.fx-stars::before {
+          background-size: 80px 80px, 110px 110px;
+          background-position: 30px 40px, 65px 95px;
+          animation: fx-star-twinkle 2.6s ease-in-out infinite;
+        }
+        .fx-layer.fx-stars::after {
+          background-size: 100px 100px, 65px 65px;
+          background-position: 15px 70px, 75px 10px;
+          animation: fx-star-twinkle 4s ease-in-out infinite 1.2s;
+        }
+        @keyframes fx-star-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
         .fx-layer.fx-clouds::before,
         .fx-layer.fx-clouds::after {
           content: '';
@@ -403,6 +407,12 @@ class TempoRelogioCard extends HTMLElement {
         .weather-icon.twinkle { animation: twinkle 3.5s ease-in-out infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+        .sun-visual {
+          width: 64px;
+          height: 64px;
+          filter: drop-shadow(0 3px 10px rgba(217,119,6,0.5));
+        }
+        .sun-visual.spin { animation: spin 60s linear infinite; }
         .content {
           flex: 1;
           min-width: 0;
@@ -439,7 +449,7 @@ class TempoRelogioCard extends HTMLElement {
           font-size: 13px;
           color: rgba(255,255,255,0.85);
         }
-        .divider { height: 1px; background: rgba(255,255,255,0.25); margin: 14px 0; }
+        .divider { height: 1px; background: rgba(255,255,255,0.32); margin: 14px 0; }
         .stats-row {
           display: flex;
           align-items: center;
@@ -452,7 +462,7 @@ class TempoRelogioCard extends HTMLElement {
           gap: 6px;
           font-size: 13px;
           color: #fff;
-          background: rgba(255,255,255,0.16);
+          background: rgba(255,255,255,0.22);
           -webkit-backdrop-filter: blur(6px);
           backdrop-filter: blur(6px);
           border-radius: 999px;
@@ -507,14 +517,15 @@ class TempoRelogioCard extends HTMLElement {
         .forecast-icon { --mdc-icon-size: 38px; color: #e2e8f0; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.35)); }
         .forecast-icon-night {
           --mdc-icon-size: 14px;
-          color: #fff;
+          color: #1e293b;
           position: absolute;
           bottom: -2px;
           right: -10px;
-          background: rgba(15,23,42,0.65);
+          background: rgba(255,255,255,0.85);
           border-radius: 50%;
           padding: 2px;
           box-sizing: content-box;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.35);
         }
         .forecast-max { font-size: 14px; font-weight: 700; color: #fff; margin-top: 4px; }
         .forecast-min { font-size: 12px; color: rgba(255,255,255,0.65); }
@@ -528,6 +539,27 @@ class TempoRelogioCard extends HTMLElement {
           <div class="main-row">
             <div class="illustration">
               <div class="icon-halo"></div>
+              <svg class="sun-visual" viewBox="0 0 100 100" style="display:none;">
+                <defs>
+                  <radialGradient id="sunCoreGrad" cx="42%" cy="38%" r="60%">
+                    <stop offset="0%" stop-color="#fffde7"/>
+                    <stop offset="35%" stop-color="#ffe066"/>
+                    <stop offset="70%" stop-color="#fbbf24"/>
+                    <stop offset="100%" stop-color="#f59e0b"/>
+                  </radialGradient>
+                </defs>
+                <g class="sun-rays" fill="#fbbf24">
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(0 50 50)"/>
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(45 50 50)"/>
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(90 50 50)"/>
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(135 50 50)"/>
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(180 50 50)"/>
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(225 50 50)"/>
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(270 50 50)"/>
+                  <rect x="47" y="3" width="6" height="17" rx="3" transform="rotate(315 50 50)"/>
+                </g>
+                <circle cx="50" cy="50" r="27" fill="url(#sunCoreGrad)"/>
+              </svg>
               <ha-icon class="weather-icon" icon="mdi:weather-cloudy"></ha-icon>
             </div>
             <div class="content">
@@ -611,14 +643,22 @@ class TempoRelogioCard extends HTMLElement {
     const isNight = this._isNight(condition);
     const iconName = CONDITION_ICONS[condition] || (isNight ? 'mdi:weather-night' : 'mdi:weather-cloudy');
     const iconEl = root.querySelector('.weather-icon');
-    iconEl.setAttribute('icon', iconName);
-    iconEl.style.color = CONDITION_ICON_COLORS[condition] || '#fff';
-    iconEl.classList.toggle('spin', condition === 'sunny');
+    const sunVisual = root.querySelector('.sun-visual');
+    if (condition === 'sunny') {
+      iconEl.style.display = 'none';
+      sunVisual.style.display = '';
+      sunVisual.classList.add('spin');
+    } else {
+      iconEl.style.display = '';
+      sunVisual.style.display = 'none';
+      sunVisual.classList.remove('spin');
+      iconEl.setAttribute('icon', iconName);
+      iconEl.style.color = CONDITION_ICON_COLORS[condition] || '#fff';
+    }
     iconEl.classList.toggle('twinkle', condition === 'clear-night');
     root.querySelector('.illustration').classList.toggle('sunny', condition === 'sunny');
-    const gradient = CONDITION_GRADIENTS[condition] || DEFAULT_GRADIENT;
+    const gradient = isNight ? NIGHT_GRADIENT : DAY_GRADIENT;
     bg.style.background = `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`;
-    bg.classList.toggle('dim-night', isNight && !String(condition).includes('night'));
     const fxLayer = root.querySelector('.fx-layer');
     if (fxLayer) {
       const fxClass = CONDITION_FX[condition] || (isNight ? 'fx-stars' : '');
