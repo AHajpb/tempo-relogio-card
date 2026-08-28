@@ -382,9 +382,9 @@ class TempoRelogioCard extends HTMLElement {
           align-items: flex-start;
           gap: 8px;
           background: rgba(0,0,0,0.28);
-          border-left: 8px solid #eab308;
+          border-left: 14px solid #eab308;
           border-radius: 8px;
-          padding: 8px 10px;
+          padding: 8px 10px 8px 12px;
           margin-bottom: 12px;
         }
         .alert-banner.level-yellow { border-left-color: #eab308; }
