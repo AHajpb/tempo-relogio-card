@@ -451,8 +451,21 @@ class TempoRelogioCard extends HTMLElement {
         .weather-icon {
           --mdc-icon-size: 64px;
           position: relative;
+          z-index: 1;
           color: #fff;
           filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+        }
+        .mini-sun-main {
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 35% 30%, #fffde7, #fbbf24 60%, #f59e0b 100%);
+          box-shadow: 0 0 16px 3px rgba(251,191,36,0.65);
+          z-index: 0;
+          display: none;
         }
         .weather-icon.spin { animation: spin 50s linear infinite; }
         .weather-icon.twinkle { animation: twinkle 3.5s ease-in-out infinite; }
@@ -609,6 +622,7 @@ class TempoRelogioCard extends HTMLElement {
           <div class="main-row">
             <div class="illustration">
               <div class="icon-halo"></div>
+              <span class="mini-sun-main"></span>
               <svg class="sun-visual" viewBox="0 0 100 100" style="display:none;">
                 <defs>
                   <radialGradient id="sunCoreGrad" cx="42%" cy="38%" r="60%">
@@ -716,16 +730,19 @@ class TempoRelogioCard extends HTMLElement {
     const iconName = CONDITION_ICONS[condition] || (isNight ? 'mdi:weather-night' : 'mdi:weather-cloudy');
     const iconEl = root.querySelector('.weather-icon');
     const sunVisual = root.querySelector('.sun-visual');
+    const miniSunMain = root.querySelector('.mini-sun-main');
     if (condition === 'sunny') {
       iconEl.style.display = 'none';
       sunVisual.style.display = '';
       sunVisual.classList.add('spin');
+      if (miniSunMain) miniSunMain.style.display = 'none';
     } else {
       iconEl.style.display = '';
       sunVisual.style.display = 'none';
       sunVisual.classList.remove('spin');
       iconEl.setAttribute('icon', iconName);
       iconEl.style.color = CONDITION_ICON_COLORS[condition] || '#fff';
+      if (miniSunMain) miniSunMain.style.display = (condition === 'partlycloudy') ? 'block' : 'none';
     }
     iconEl.classList.toggle('twinkle', condition === 'clear-night');
     root.querySelector('.illustration').classList.toggle('sunny', condition === 'sunny');
